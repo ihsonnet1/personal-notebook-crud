@@ -1,0 +1,28 @@
+### Common
+server:
+  port: 8030
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: hunger-heroes
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+  liquibase:
+    enabled: true
+    drop-first: false
+    change-log: classpath:db.changelog/db.changelog-master.yml
+    default-schema: public
+  mvc:
+    path match:
+      matching-strategy: ant_path_matcher
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/personal-notebook}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:psql12345678}
+
+---
