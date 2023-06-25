@@ -9,6 +9,7 @@ import com.hubartech.personalnotebookcrud.repository.NotebookRepository;
 import com.hubartech.personalnotebookcrud.service.NotebookService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -24,16 +25,23 @@ public class NotebookServiceImpl implements NotebookService {
 
     private final NotebookRepository notebookRepository;
     @Override
-    public ResponseEntity<BasicMessageResponse> createNote(NotebookRequest notebookResponse) {
+    public ResponseEntity<BasicMessageResponse> createNote(NotebookRequest notebookRequest) {
+
+        if (!notebookRequest.validate()) return new ResponseEntity<>(new BasicMessageResponse(400,"Invalid Input! Note Creation Failed"), HttpStatus.BAD_REQUEST);
+
         NotebookModel notebookModel = NotebookModel.builder()
-                .noteName(notebookResponse.getNoteName())
-                .content(notebookResponse.getContent())
+                .noteName(notebookRequest.getNoteName())
+                .content(notebookRequest.getContent())
                 .build();
 
-        notebookRepository.save(notebookModel);
-
-        return new ResponseEntity<>(new BasicMessageResponse(201,"Note Created Successfully"), HttpStatus.CREATED);
+        try {
+            notebookRepository.save(notebookModel);
+            return new ResponseEntity<>(new BasicMessageResponse(201,"Note Created Successfully"), HttpStatus.CREATED);
+        } catch (DataIntegrityViolationException e) {
+            return new ResponseEntity<>(new BasicMessageResponse(400,"Note Creation Failed"), HttpStatus.BAD_REQUEST);
+        }
     }
+
 
     @Override
     public ResponseEntity<BasicDataResponse<List<NotebookResponse>>> getAllNotes() {
@@ -64,17 +72,18 @@ public class NotebookServiceImpl implements NotebookService {
     public ResponseEntity<BasicDataResponse<NotebookResponse>> updateNote(Long id, NotebookRequest notebookRequest) {
         Optional<NotebookModel> notebookModel = notebookRepository.findById(id);
 
+        NotebookResponse notebookResponse = new NotebookResponse();
+
         if (notebookModel.isPresent()) {
             NotebookModel notebookModel1 = notebookModel.get();
             notebookModel1.setNoteName(notebookRequest.getNoteName());
             notebookModel1.setContent(notebookRequest.getContent());
 
             notebookRepository.save(notebookModel1);
-            NotebookResponse notebookResponse = new NotebookResponse();
             BeanUtils.copyProperties(notebookModel1, notebookResponse);
 
             return new ResponseEntity<>(new BasicDataResponse<>(200, "Note Updated Successfully", notebookResponse), HttpStatus.OK);
-        }else throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }else return new ResponseEntity<>(new BasicDataResponse<>(404, "Note Not Found", null), HttpStatus.NOT_FOUND);
     }
 
     @Override
@@ -84,6 +93,6 @@ public class NotebookServiceImpl implements NotebookService {
         if (notebookModel.isPresent()){
             notebookRepository.delete(notebookModel.get());
             return new ResponseEntity<>(new BasicMessageResponse(200,"Note Deleted Successfully"), HttpStatus.OK);
-        }else throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }else return new ResponseEntity<>(new BasicMessageResponse(404,"Note Not Found"), HttpStatus.NOT_FOUND);
     }
 }
